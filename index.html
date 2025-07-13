@@ -139,16 +139,31 @@
     }
 
     function timeToMinutes(timeStr) {
-      // 支援 10am, 10:30am, 10pm, 10:00pm
       if (!timeStr) return null;
-      const match = timeStr.trim().match(/^(\d{1,2})(?::(\d{2}))?(am|pm)$/i);
-      if (!match) return null;
-      let hour = parseInt(match[1]);
-      let min = match[2] ? parseInt(match[2]) : 0;
-      const ampm = match[3].toLowerCase();
-      if (ampm === 'pm' && hour !== 12) hour += 12;
-      if (ampm === 'am' && hour === 12) hour = 0;
-      return hour * 60 + min;
+      timeStr = timeStr.trim().toLowerCase();
+      // 支援 10am, 10:30am, 10pm, 10:00pm
+      let match = timeStr.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)$/);
+      if (match) {
+        let hour = parseInt(match[1]);
+        let min = match[2] ? parseInt(match[2]) : 0;
+        const ampm = match[3];
+        if (ampm === 'pm' && hour !== 12) hour += 12;
+        if (ampm === 'am' && hour === 12) hour = 0;
+        return hour * 60 + min;
+      }
+      // 支援 24小時制 12:20
+      match = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+      if (match) {
+        let hour = parseInt(match[1]);
+        let min = parseInt(match[2]);
+        return hour * 60 + min;
+      }
+      // 支援整點 12
+      match = timeStr.match(/^(\d{1,2})$/);
+      if (match) {
+        return parseInt(match[1]) * 60;
+      }
+      return null;
     }
 
     async function handleInput() {
@@ -209,7 +224,7 @@
         });
 
         if (postRes.ok) {
-          outputField.textContent = `👋 Hello ${name},\nThank you for being my participant.\nThis is a reminder that your session is scheduled for:\n🗓 ${day} July ${weekday} at ${time}\n\nPlease read the participant information sheet document before attending:\n📄 https://drive.google.com/file/d/18EPVNCOZ-wFQUhGvbXsXVvoyKKYtSRY2/view?usp=drive_link\nPlease read and sign the informed consent form here:\n📝 https://docs.google.com/document/d/1j2olsphemuG9bg4GlUTd3dGLYiPEcMd4/edit?usp=sharing&ouid=101877932457012564323&rtpof=true&sd=true\n\nSee you then!`;
+          outputField.textContent = `👋 Hello ${name},\nThank you for being my participant.\nThis is a reminder that your session is scheduled for:\n🗓 ${day} July ${weekday} at ${time}\n\nPlease read the participant information sheet document before attending:\n📄 https://drive.google.com/file/d/18EPVNCOZ-wFQUhGvbXsXVvoyKKYtSRY2/view?usp=drive_link\nPlease read and sign the informed consent form here:\n📝 https://docs.google.com/document/d/1j2olsphemuG9bg4GlUTd3dGLYiPEcMd4/edit?usp=sharing&ouid=101877932457012564323&rtpof=true&sd=true\n\nTesting Location: LDS 2.33\n\nSee you then!`;
         } else {
           outputField.textContent = "❌ Failed to save your booking. Please try again.";
         }
