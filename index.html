@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Participant Scheduler</title>
+  <style>
+    body {
+      background: #d6d9ec;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 400px;
+      margin: 32px auto;
+      background: #e0e4f5;
+      border-radius: 18px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.07);
+      padding: 24px 16px 32px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h2 {
+      color: #6d7edb;
+      margin-bottom: 1.2rem;
+      margin-top: 0.5rem;
+      font-size: 1.3rem;
+      font-weight: 700;
+      text-align: center;
+    }
+    .input-row {
+      display: flex;
+      width: 100%;
+      margin-bottom: 1.5rem;
+      gap: 8px;
+      align-items: center;
+      justify-content: center;
+    }
+    #input {
+      flex: 1;
+      padding: 0.8rem;
+      border-radius: 10px;
+      border: 1.5px solid #bfc6e6;
+      font-size: 1rem;
+      background: #f7f8fa;
+      outline: none;
+      margin-right: 0;
+    }
+    #submitBtn {
+      background: #6d7edb;
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 2.5rem;
+      height: 2.5rem;
+      font-size: 1.3rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.18s;
+    }
+    #submitBtn:hover {
+      background: #4a58c4;
+    }
+    .output-box {
+      width: 100%;
+      min-height: 160px;
+      background: #fff;
+      border-radius: 14px;
+      border: 1.5px solid #bfc6e6;
+      padding: 1.2rem;
+      font-size: 1.05rem;
+      margin-bottom: 1.2rem;
+      white-space: pre-wrap;
+      box-sizing: border-box;
+    }
+    #copyBtn {
+      width: 100%;
+      background: #6d7edb;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      padding: 0.8rem 0;
+      font-size: 1.1rem;
+      font-weight: 500;
+      cursor: pointer;
+      margin-top: 0.2rem;
+      transition: background 0.18s;
+    }
+    #copyBtn:hover {
+      background: #4a58c4;
+    }
+    @media (max-width: 500px) {
+      .container {
+        max-width: 98vw;
+        padding: 10px 2vw 18px 2vw;
+      }
+      .output-box {
+        font-size: 0.98rem;
+        padding: 0.7rem;
+      }
+      #input {
+        font-size: 0.98rem;
+        padding: 0.6rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Booking time sending</h2>
+    <div class="input-row">
+      <input type="text" id="input" placeholder="Type: Bonny 14 10am or 14" />
+      <button id="submitBtn" onclick="handleInput()">→</button>
+    </div>
+    <h2>Message back</h2>
+    <div id="output" class="output-box"></div>
+    <button id="copyBtn" onclick="copyToClipboard()">Copy</button>
+  </div>
+  <script>
+    async function getScheduleFromSheetDB(day) {
+      const res = await fetch(`https://sheetdb.io/api/v1/vgskl4sx4fas4/search?Day=${day}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.map(entry => ({ name: entry.Name, time: entry.Time }));
+    }
+
+    function copyToClipboard() {
+      const text = document.getElementById('output').textContent;
+      if (text) {
+        navigator.clipboard.writeText(text).then(() => {
+          alert('Copied to clipboard!');
+        });
+      }
+    }
+
+    async function handleInput() {
+      const input = document.getElementById("input").value.trim();
+      const outputField = document.getElementById("output");
+
+      const bookingRegex = /^([A-Za-z]+)\s+(\d{1,2})\s+(\d{1,2}(?::\d{2})?(?:am|pm))$/i;
+      const dayOnlyRegex = /^\d{1,2}$/;
+
+      if (bookingRegex.test(input)) {
+        const [, name, dayStr, time] = input.match(bookingRegex);
+        const day = parseInt(dayStr);
+        const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const date = new Date(2025, 6, day); // July = 6
+        const weekday = weekdays[date.getDay()];
+
+        const data = {
+          data: [{
+            Name: name,
+            Day: day,
+            Weekday: weekday,
+            Time: time
+          }]
+        };
+
+        const res = await fetch("https://sheetdb.io/api/v1/vgskl4sx4fas4", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+
+        if (res.ok) {
+          outputField.textContent = `👋 Hello ${name},\nThank you for being my participant.\nThis is a reminder that your session is scheduled for:\n🗓 ${day} July ${weekday} at ${time}\n\nPlease read the participant information sheet document before attending:\n📄 https://drive.google.com/file/d/18EPVNCOZ-wFQUhGvbXsXVvoyKKYtSRY2/view?usp=drive_link\nPlease read and sign the informed consent form here:\n📝 https://docs.google.com/document/d/1j2olsphemuG9bg4GlUTd3dGLYiPEcMd4/edit?usp=sharing&ouid=101877932457012564323&rtpof=true&sd=true\n\nSee you then!`;
+        } else {
+          outputField.textContent = "❌ Failed to save your booking. Please try again.";
+        }
+
+      } else if (dayOnlyRegex.test(input)) {
+        const day = parseInt(input);
+        const schedule = await getScheduleFromSheetDB(day);
+        if (schedule.length === 0) {
+          outputField.textContent = `No schedule for July ${day}.`;
+        } else {
+          let msg = `The schedule for July ${day} will be:\n\n`;
+          msg += schedule.map(s => `${s.name} ${s.time}`).join("\n");
+          outputField.textContent = msg;
+        }
+
+      } else {
+        outputField.textContent = "Invalid input format. Try 'Bonny 14 10am' or just a day number like '14'.";
+      }
+    }
+  </script>
+</body>
+</html>
